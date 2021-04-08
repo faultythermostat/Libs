@@ -24,7 +24,14 @@ draw = function() {
 		ctx.stroke()
 	}
 	
-	if (keyboard.keys.length) ctx.fillText((keyboard.keys.reduce(function(a){if (a.state) return a;return " "},"")),100,100)
+	if (keyboard.keys.length) {
+		ctx.fillText("Active keys: " +(keyboard.keys.reduce(
+			function(acc,v){
+				if (v.state) return acc+(acc==""?"":",")+v.key;
+				return acc
+			},"")
+		),100,100)
+	}
 }
 
 loop = function() {
