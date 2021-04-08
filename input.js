@@ -1,3 +1,5 @@
+//amek pseudo-interrupt functions to be called along with event handler
+
 class _key {
 	constructor(ky,fp=true) {
 		this.key = ky;
@@ -6,7 +8,7 @@ class _key {
 		this.flipFlop = fp;
 	}
 	poll = function(resetter=true) {
-		if (this.triggered==true) {
+		if (this.triggered) {
 			if (resetter) this.triggered = false;
 			return true;
 		}
@@ -19,12 +21,10 @@ class _key {
 		if (!(this.flipFlop && repeat)) {
 			this.status = true;
 			this.triggered = true;
-			return;
 		}
 	}
 	keyUp() {
 		this.status = false;
-		return;
 	}
 }
 
@@ -51,134 +51,92 @@ class _keyboard {
 	}
 }
 
-mouse = {//old version of the mouse handler
-	buttons:[],
-	initTime:-1,
-	location:{x:0,y:0},
-	wheel:{position:0,lastDeltaY:0,timeStamp:-1,reset:function(){mouse.wheel.position=0}},
-	lastClickLocation:{x:null,y:null},
-	dragging:false,
-	moved:false,
-	dragLocations:[],
-	getLocation:function() {
-		return mouse.location;
-	},
-	wasMoved:function(ignoreReset=false) {
-		if (mouse.moved) {
-			if (!ignoreReset) mouse.moved = false;
+//SUPER BASIC MOUSE HANDLER FOR NOW, WILL UPDATE
+//make sure to save button locations under each key
+//drag handler, track positions reported during drag
+
+class _button {
+	constructor(bt) {
+		this.button = bt;
+		this.status = false;
+		this.triggered = false;
+	}
+	poll(resetter=true) {
+		if (this.triggered) {
+			if (resetter) this.triggered = false;
 			return true;
 		}
 		return false;
-	},
-	getClickLocation:function() {
-		return mouse.lastClickLocation;
-	},
-	pollButton:function(btp,resetter=true) {
-		for (var i=0;i<mouse.buttons.length;i++) {
-			if (mouse.buttons[i].button==btp) {
-				return mouse.buttons[i].poll(resetter);
-			}
-		}
-		return null;
-	},
-	buttonState:function(btp) {
-		for (var i=0;i<mouse.buttons.length;i++) {
-			if (mouse.buttons[i].button==btp) {
-				return mouse.buttons[i].getState();
-			}
-		}
-		return null;
-	},
-	mouseMove:function(e) {
-		mouse.location.x = e.clientX;
-		mouse.location.y = e.clientY;
-		mouse.moved = true;
-		mouse.location.timeStamp = e.timeStamp;
-		for (var i=0;i<mouse.buttons.length;i++) {
-			if (mouse.buttons[i].getState()) {
-				if (!mouse.dragging) { //just started dragging
-					mouse.dragLocations.push({x:mouse.lastClickLocation.x,y:mouse.lastClickLocation.y});
-					mouse.dragLocations = [];
-				}
-				mouse.dragging = true;
-				break;
-			}
-		}
-		if (mouse.dragging) {
-			mouse.dragLocations.push({x:e.clientX,y:e.clientY});
-			return;
-		}
-	},
-	mouseDown:function(e) {
-		mouse.location.x = e.clientX;
-		mouse.location.y = e.clientY;
-		mouse.lastClickLocation.x = e.clientX;
-		mouse.lastClickLocation.y = e.clientY;
-		for (var i=0;i<mouse.buttons.length;i++) {
-			if (e.button==mouse.buttons[i].button) {
-				mouse.buttons[i].status = true;
-				mouse.buttons[i].triggered = true;
-				mouse.buttons[i].timeStamp = e.timeStamp;
-				return;
-			}
-		}
-	},
-	mouseWheel:function(e) {
-		//console.log(e)
-		if (!e.ctrlKey) mouse.wheel.position+=e.deltaY
-		mouse.wheel.timeStamp = e.timeStamp;
-		mouse.wheel.lastDeltaY = e.deltaY;
-	},
-	mouseUp:function(e) {
-		mouse.location.x = e.clientX;
-		mouse.location.y = e.clientY;
-		var buttonsAreDown = false;
-		for (var i=0;i<mouse.buttons.length;i++) {
-			if (e.button==mouse.buttons[i].button) {
-				mouse.buttons[i].status = false;
-				mouse.buttons[i].timeStamp = e.timeStamp;
-				continue;
-			}
-			if (mouse.buttons[i].getState()) {
-				buttonsAreDown=true;
-				break;
-			}
-		}
-		if (!buttonsAreDown) {
-			mouse.dragging = false; //if no buttons are pressed, you must not be dragging anymore
-		}
-	},
-	init:function(initAll=true) { //if you dont want mouse movement events, pass false
-		addEventListener("mousedown",mouse.mouseDown);
-		addEventListener("mouseup",mouse.mouseUp);
-		addEventListener("wheel",mouse.mouseWheel);
-		if (initAll) {
-			addEventListener("mousemove",mouse.mouseMove);
-		}
-		mouse.initTime = -1;
-	}, //if mouse movement events are ignored, mouse location is still updated when mouse is clicked
-	buttonConstructor:function(btn) {
-		this.button = btn;
+	}
+	get state() {
+		return this.status;
+	}
+	
+	buttonDown(loc) {//repeat is true if the keypress was fired by holding the key down
+		this.status = true;
+		this.triggered = true;
+		this.clickLoc = loc;
+	}
+	buttonUp() {
 		this.status = false;
-		this.triggered = false;
-		this.timeStamp = -1;
-		this.poll = function(resetter=true) {
-			if (this.triggered==true) {
-				if (resetter) this.triggered = false;
-				return true;
-			}
-			return false;
+	}
+}
+
+class _mouse {
+	constructor() {
+		//event listners
+		addEventListener("mousedown",this.buttonDown.bind(this));
+		addEventListener("mouseup",this.buttonUp.bind(this));
+		addEventListener("wheel",this.wheelMove.bind(this));
+		addEventListener("mousemove",this.mouseMove.bind(this));
+			
+		this.buttons = [];
+		this.dragLocations = [];
+		this.loc = new _vector(0,0)//shortened so it wont interfere with getter
+		this.wheel = {
+			position: 0,
+			delta: 0//change since last poll
 		}
-		this.getState = function() {
-			if (this.status==true) return true;
-			return false;
+		this.moved = false;
+		this.drag = false;
+	}
+	get location() {
+		return this.loc
+	}
+	get wasMoved() {
+		return this.moved||(this.moved=false)//resets and returns val
+	}
+	get dragging() {
+		return this.drag//resets and returns val
+	}
+	mouseMove(e) {
+		this.loc.x = e.clientX;
+		this.loc.y = e.clientY;
+		this.moved = true;
+		if (this.buttons.some(a=>a.state)) {
+			if (!this.drag) this.dragLocations = [];//reset locations if we just started dragging
+			this.dragLocations.push(new _vector(this.location.x,this.location.y));
+			this.drag = true;
 		}
-	},
-	addButtons:function(buttons) {
-		for (var i=0;i<buttons.length;i++) {
-			mouse.buttons.push(
-				new mouse.buttonConstructor(buttons[i].button)
-			)
-		}
+	}
+	wheelMove(e) {
+		this.wheel.position += e.deltaY
+		this.wheel.lastDeltaY = e.deltaY;
+	}
+	buttonDown(e) {
+		if (!this.buttons.some(a=>e.button==a.button)) this.addButton(e.button)//check if the key doesnt exist already
+		this.callButton(e.button).buttonDown(this.location)
+	}
+	buttonUp(e) {
+		if (!this.buttons.some(a=>e.button==a.button)) this.addButton(e.button)
+		this.callButton(e.button).buttonUp()
+		this.drag = false
+	}
+	callButton(bt) {
+		if (!this.buttons.some(a=>bt==a.button)) this.addButton(bt)
+		return this.buttons.find(a=>bt==a.button)
+	}
+	addButton(bt) {
+		this.buttons.push(new _button(bt))
 	}
 }
