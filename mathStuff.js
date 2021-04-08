@@ -1,54 +1,21 @@
-Math.distance = function(a,b,dim=0) {
-	if (a.z == undefined || b.z == undefined || dim == 2) {
-		return Math.sqrt(((a.x-b.x)*(a.x-b.x))+((a.y-b.y)*(a.y-b.y)))
-	} else if (a.type == VECTOR3D || b.type == VECTOR3D) {
-		return Math.sqrt(((a.x-b.x)*(a.x-b.x))+((a.y-b.y)*(a.y-b.y))+((a.z-b.z)*(a.z-b.z)))
-	}
+Math.distance = function(a,b) {
+	return Math.sqrt(((a.x-b.x)*(a.x-b.x))+((a.y-b.y)*(a.y-b.y)))
 }
 Math.angle = function(a,b) {
 	return Math.atan2(b.y-a.y,b.x-a.x)
 }
 
-_VECTOR3D = function(x=null,y=null,z=null) {
-	this.x = x;
-	this.y = y;
-	this.z = z;
-	this.type = VECTOR3D;
-}
-_VECTOR3D.prototype.add = function(a) {
-	return new _VECTOR3D(this.x+a.x,this.y+a.y,this.z+a.z);
-}
-_VECTOR3D.prototype.subtract = function(a) {
-	return new _VECTOR3D(this.x-a.x,this.y-a.y,this.z-a.z);
-}
-_VECTOR3D.prototype.magnitude = function() {
-	return Math.sqrt((this.x*this.x)+(this.y*this.y)+(this.z*this.z));
-}
-_VECTOR3D.prototype.dot = function(a) {
-	return (this.x*a.x)+(this.y*a.y)+(this.z*a.z);
-}
-_VECTOR3D.prototype.cross = function(a) {
-	return new _VECTOR3D(
-		this.y * a.z - this.z * a.y,
-    	this.z * a.x - this.x * a.z,
-    	this.x * a.y - this.y * a.x
-	)
-}
-_VECTOR3D.prototype.multiply = function(a) {
-	return new _VECTOR3D(
-		this.x * a,
-    	this.y * a,
-    	this.z * a
-	)
-}
-
-_VECTOR2D = function(x=null,y=null) {
-	this.x = x;
-	this.y = y;
-	this.type = VECTOR2D;
-}
-_VECTOR2D.prototype.add = function(a) {
-	return new _VECTOR2D(this.x+a.x,this.y+a.y);
+class _vector {
+	constructor (x,y) {
+		this.x = x;
+		this.y = y;
+	}
+	add(a) {
+		return new _vector(this.x+a.x,this.y+a.y,this.z+a.z);
+	}
+	subtract(a) {
+		return new _vector(this.x-a.x,this.y-a.y,this.z-a.z);
+	}
 }
 
 Math.rotatePoint = function(p, c, angle) {
@@ -57,62 +24,6 @@ Math.rotatePoint = function(p, c, angle) {
         var nx = (cos * (p.x - c.x)) + (sin * (p.y - c.y)) + c.x;
         var ny = (cos * (p.y - c.y)) - (sin * (p.x - c.x)) + c.y;
     return new _VECTOR3D(nx,ny,p.z);
-}
-Math.rotate3DPoint = function(p, c, pitch, roll, yaw) {
-	var rp = Math.yawPoint({x:p.x-c.x,y:p.y-c.y,z:p.z-c.z},yaw);
-	var rp2 = Math.pitchPoint(rp,pitch);
-	var rp3 = Math.rollPoint(rp2,roll);
-	return new _VECTOR3D(rp3.x+c.x,rp3.y+c.y,rp3.z+c.z)
-}
-Math.rollPoint = function(p, roll) {
-    var cosc = Math.cos(roll);
-    var sinc = Math.sin(roll);
-	
-	return {x:(p.x),y:(cosc*p.y + (-sinc)*p.z),z:(sinc*p.y + cosc*p.z)};
-}
-Math.pitchPoint = function(p,pitch) {
-    var cosb = Math.cos(pitch);
-    var sinb = Math.sin(pitch);
-
-    var Axx = cosb;
-    var Axz = sinb;
-
-    var Azx = -sinb;
-    var Azz = cosb;
-
-    var px = p.x
-    var py = p.y
-    var pz = p.z
-	
-	var rp = {};
-
-	rp.x = (Axx*px + Axz*pz)
-    rp.y = (py)
-    rp.z = (Azx*px + Azz*pz)
-	
-	return rp;
-}
-Math.yawPoint = function(p, yaw) {
-    var cosa = Math.cos(-yaw);
-    var sina = Math.sin(-yaw);
-
-    var Axx = cosa;
-    var Axy = -sina;
-
-    var Ayx = sina;
-    var Ayy = cosa;
-	
-    var px = p.x;
-    var py = p.y;
-    var pz = p.z;
-	
-	var rp = {};
-
-	rp.x = (Axx*px + Axy*py);
-    rp.y = (Ayx*px + Ayy*py);
-    rp.z = (pz);
-	
-	return rp;
 }
 
 Math.cot = function(a) {
